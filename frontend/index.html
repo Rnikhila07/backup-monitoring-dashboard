@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Backup Dashboard - Upload</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>Enterprise Backup Monitoring</h1>
+    <a href="#" id="logoutLink" class="logout-link">Logout</a>
+  </header>
+
+  <main class="container container-wide">
+    <div class="upload-grid">
+    <section class="card upload-card" data-type="Disk-to-Disk">
+      <h2>Disk-to-Disk Backup</h2>
+      <label>Unit</label>
+      <select class="unitSelect">
+        <option value="HR">HR</option>
+        <option value="Finance">Finance</option>
+        <option value="Manufacturing Unit-1">Manufacturing Unit-1</option>
+        <option value="IT">IT</option>
+      </select>
+      <label>CSV /HTML/Excel File</label>
+      <input type="file" class="fileInput" accept=".csv,.xlsx,.xls,.html,.htm" />
+      <button class="uploadBtn">Upload</button>
+      <p class="statusMessage"></p>
+    </section>
+
+    <section class="card upload-card" data-type="Disk-to-Tape">
+      <h2>Disk-to-Tape Backup</h2>
+      <label>Unit</label>
+      <select class="unitSelect">
+        <option value="HR">HR</option>
+        <option value="Finance">Finance</option>
+        <option value="Manufacturing Unit-1">Manufacturing Unit-1</option>
+        <option value="IT">IT</option>
+      </select>
+      <label>CSV /HTML/Excel File</label>
+      <input type="file" class="fileInput" accept=".csv,.xlsx,.xls,.html,.htm" />
+      <button class="uploadBtn">Upload</button>
+      <p class="statusMessage"></p>
+    </section>
+
+    <section class="card upload-card" data-type="Replication">
+      <h2>Replication</h2>
+      <label>Unit</label>
+      <select class="unitSelect">
+        <option value="HR">HR</option>
+        <option value="Finance">Finance</option>
+        <option value="Manufacturing Unit-1">Manufacturing Unit-1</option>
+        <option value="IT">IT</option>
+      </select>
+      <label>CSV /HTML/Excel File</label>
+      <input type="file" class="fileInput" accept=".csv,.xlsx,.xls,.html,.htm" />
+      <button class="uploadBtn">Upload</button>
+      <p class="statusMessage"></p>
+    </section>
+    </div>
+    <section class="card">
+      <a href="dashboard.html">Go to Dashboard →</a>
+    </section>
+
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>

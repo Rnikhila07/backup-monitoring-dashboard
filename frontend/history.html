@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Upload History</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>Enterprise Backup Monitoring</h1>
+    <a href="#" id="logoutLink" class="logout-link">Logout</a>
+  </header>
+
+  <main class="container container-wide">
+
+    <section class="card">
+      <h2>Upload History</h2>
+      <table id="historyTable" style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+        <thead>
+          <tr style="text-align: left; border-bottom: 2px solid #ddd;">
+            <th style="padding: 8px;">Filename</th>
+            <th style="padding: 8px;">Backup Type</th>
+            <th style="padding: 8px;">Unit</th>
+            <th style="padding: 8px;">Uploaded At</th>
+          </tr>
+        </thead>
+        <tbody id="historyBody">
+        </tbody>
+      </table>
+    </section>
+
+    <section class="card">
+      <a href="dashboard.html">← Back to Dashboard</a>
+    </section>
+
+  </main>
+
+  <script>
+    const API_BASE_URL = "http://127.0.0.1:8000";
+
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("logoutLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("access_token");
+      window.location.href = "login.html";
+    });
+
+    async function loadHistory() {
+      const response = await fetch(`${API_BASE_URL}/dashboard/history`, {
+        headers: { "Authorization": `Bearer ${token}` }
+      });
+      const data = await response.json();
+
+      const historyBody = document.getElementById("historyBody");
+
+      historyBody.innerHTML = data.map(item => `
+        <tr style="border-bottom: 1px solid #eee;">
+          <td style="padding: 8px;">${item.filename}</td>
+          <td style="padding: 8px;">${item.backup_type}</td>
+          <td style="padding: 8px;">${item.unit_number}</td>
+          <td style="padding: 8px;">${new Date(item.uploaded_at).toLocaleString()}</td>
+        </tr>
+      `).join("");
+    }
+
+    loadHistory();
+  </script>
+</body>
+</html>

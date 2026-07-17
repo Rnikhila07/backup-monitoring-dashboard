@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>VM Search</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>Enterprise Backup Monitoring</h1>
+    <a href="#" id="logoutLink" class="logout-link">Logout</a>
+  </header>
+
+  <main class="container container-wide">
+
+    <section class="card">
+      <h2>Search VM / Client</h2>
+      <input type="text" id="vmSearchInput" placeholder="Enter VM/Client name e.g. VM-WEB-01" style="width: 300px; display: inline-block;" />
+      <button id="vmSearchBtn">Search</button>
+      <p id="vmSearchStatus"></p>
+    </section>
+
+    <section id="vmReportSection" style="display: none;">
+      <section class="summary-grid" id="vmSummaryGrid"></section>
+
+      <div class="chart-card" style="height: 340px; position: relative;">
+        <h2>Files Uploaded — Past 3 Weeks</h2>
+        <canvas id="vmWeeklyChart"></canvas>
+      </div>
+    </section>
+
+    <section class="card">
+      <a href="dashboard.html">← Back to Dashboard</a>
+    </section>
+
+  </main>
+
+  <script>
+    const API_BASE_URL = "http://127.0.0.1:8000";
+    const token = localStorage.getItem("access_token");
+
+    if (!token) { window.location.href = "login.html"; }
+
+    document.getElementById("logoutLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("access_token");
+      window.location.href = "login.html";
+    });
+
+    let vmChart = null;
+
+    document.getElementById("vmSearchBtn").addEventListener("click", async () => {
+      const clientName = document.getElementById("vmSearchInput").value.trim();
+      const statusEl = document.getElementById("vmSearchStatus");
+
+      if (!clientName) {
+        statusEl.textContent = "Please enter a VM name.";
+        statusEl.style.color = "red";
+        return;
+      }
+
+      statusEl.textContent = "Searching...";
+      statusEl.style.color = "black";
+
+      const response = await fetch(
+        `${API_BASE_URL}/dashboard/vm-report?client_name=${encodeURIComponent(clientName)}`,
+        { headers: { "Authorization": `Bearer ${token}` } }
+      );
+      const data = await response.json();
+
+      if (!data.found) {
+        statusEl.textContent = "No records found for this VM.";
+        statusEl.style.color = "red";
+        document.getElementById("vmReportSection").style.display = "none";
+        return;
+      }
+
+      statusEl.textContent = "";
+
+      const anomalyColor = data.anomaly_status === "Abnormal" ? "red" : "green";
+
+      document.getElementById("vmSummaryGrid").innerHTML = `
+        <div class="summary-card"><div class="value">${data.total_records}</div><div class="label">Total Records</div></div>
+        <div class="summary-card"><div class="value">${data.latest_status ?? "-"}</div><div class="label">Latest Status</div></div>
+        <div class="summary-card"><div class="value" style="color:${anomalyColor}">${data.anomaly_status}</div><div class="label">ML Anomaly Check</div></div>
+      `;
+
+      if (vmChart) vmChart.destroy();
+
+      vmChart = new Chart(document.getElementById("vmWeeklyChart"), {
+        type: "bar",
+        data: {
+          labels: data.week_labels,
+          datasets: [{
+            label: "Total Files",
+            data: data.week_values,
+            backgroundColor: "#042c53"
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+
+      document.getElementById("vmReportSection").style.display = "block";
+    });
+  </script>
+</body>
+</html>

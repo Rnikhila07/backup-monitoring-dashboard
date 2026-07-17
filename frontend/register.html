@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Register - Backup Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>Enterprise Backup Monitoring</h1>
+  </header>
+
+  <main class="container">
+    <section class="card">
+      <h2>Register</h2>
+
+      <label for="username">Username</label>
+      <input type="text" id="username" placeholder="Choose a username" />
+
+      <label for="password">Password</label>
+      <input type="password" id="password" placeholder="Choose a password" />
+
+      <button id="registerBtn">Register</button>
+
+      <p id="registerStatus"></p>
+
+      <p style="margin-top: 12px; font-size: 14px;">
+        Already have an account? <a href="login.html">Login here</a>
+      </p>
+    </section>
+  </main>
+
+  <script>
+    const API_BASE_URL = "http://127.0.0.1:8000";
+
+    const registerBtn = document.getElementById("registerBtn");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const registerStatus = document.getElementById("registerStatus");
+
+    registerBtn.addEventListener("click", async () => {
+      const username = usernameInput.value;
+      const password = passwordInput.value;
+
+      if (!username || !password) {
+        registerStatus.textContent = "Please enter both username and password.";
+        registerStatus.style.color = "red";
+        return;
+      }
+
+      registerStatus.textContent = "Registering...";
+      registerStatus.style.color = "black";
+
+      try {
+        const response = await fetch(`${API_BASE_URL}/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data.detail || "Registration failed");
+        }
+
+        registerStatus.textContent = "✅ Registered successfully! Redirecting to login...";
+        registerStatus.style.color = "green";
+
+        setTimeout(() => {
+          window.location.href = "login.html";
+        }, 1500);
+
+      } catch (error) {
+        registerStatus.textContent = `❌ ${error.message}`;
+        registerStatus.style.color = "red";
+      }
+    });
+  </script>
+</body>
+</html>

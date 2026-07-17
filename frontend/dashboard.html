@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Backup Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>Enterprise Backup Monitoring</h1>
+    <a href="#" id="logoutLink" class="logout-link">Logout</a>
+  </header>
+
+  <main class="container container-wide">
+
+    <section class="summary-grid" id="summaryGrid"></section>
+    <section class="card">
+  <h2>Search VM / Client</h2>
+  <input type="text" id="vmSearchInput" placeholder="Enter VM/Client name e.g. VM-WEB-01" style="width: 300px; display: inline-block;" />
+  <button id="vmSearchBtn">Search</button>
+  <p id="vmSearchStatus"></p>
+</section>
+
+<section id="vmReportSection" style="display: none;">
+  <section class="summary-grid" id="vmSummaryGrid"></section>
+
+  <div class="chart-card" style="height: 340px; position: relative;">
+    <h2>Files Uploaded — Past 7 Days</h2>
+    <canvas id="vmWeeklyChart"></canvas>
+  </div>
+</section>
+
+<section class="card">
+  <h2>All VMs — Overview</h2>
+  <table style="width: 100%; border-collapse: collapse; margin-top: 12px;">
+    <thead>
+      <tr style="text-align: left; border-bottom: 2px solid #ddd;">
+        <th style="padding: 8px;">VM / Client</th>
+        <th style="padding: 8px;">Total Records</th>
+        <th style="padding: 8px;">Latest Status</th>
+        <th style="padding: 8px;">ML Anomaly Check</th>
+      </tr>
+    </thead>
+    <tbody id="allVmsBody"></tbody>
+  </table>
+</section>
+
+   <section class="upload-grid">
+  <div class="card chart-card">
+    <h2>Disk-to-Disk</h2>
+    <select class="metricSelect" data-target="ddChart" data-type="Disk-to-Disk">
+      <option value="status">Status</option>
+      <option value="files">Number of Files</option>
+      <option value="size">Backup Size</option>
+    </select>
+    <canvas id="ddChart"></canvas>
+  </div>
+
+  <div class="card chart-card">
+    <h2>Disk-to-Tape</h2>
+    <select class="metricSelect" data-target="dtChart" data-type="Disk-to-Tape">
+      <option value="status">Status</option>
+      <option value="files">Number of Files</option>
+      <option value="size">Backup Size</option>
+    </select>
+    <canvas id="dtChart"></canvas>
+  </div>
+
+  <div class="card chart-card">
+    <h2>Replication — Updated Status</h2>
+    <canvas id="replUpdatedChart"></canvas>
+  </div>
+</section>
+    <section class="card">
+  <a href="index.html">← Back to Upload</a>
+  &nbsp;|&nbsp;
+  <a href="history.html">View Upload History →</a>
+</section>
+
+  </main>
+
+  <script>
+    const API_BASE_URL = "http://127.0.0.1:8000";
+
+    const token = localStorage.getItem("access_token");
+
+    if (!token) {
+      window.location.href = "login.html";
+    }
+
+    document.getElementById("logoutLink").addEventListener("click", (e) => {
+      e.preventDefault();
+      localStorage.removeItem("access_token");
+      window.location.href = "login.html";
+    });
+
+    const authHeaders = {
+      "Authorization": `Bearer ${token}`
+    };
+    let vmChart = null;
+
+document.getElementById("vmSearchBtn").addEventListener("click", async () => {
+  const clientName = document.getElementById("vmSearchInput").value.trim();
+  const statusEl = document.getElementById("vmSearchStatus");
+
+  if (!clientName) {
+    statusEl.textContent = "Please enter a VM name.";
+    statusEl.style.color = "red";
+    return;
+  }
+
+  statusEl.textContent = "Searching...";
+  statusEl.style.color = "black";
+
+  const response = await fetch(
+    `${API_BASE_URL}/dashboard/vm-report?client_name=${encodeURIComponent(clientName)}`,
+    { headers: authHeaders }
+  );
+  const data = await response.json();
+
+  if (!data.found) {
+    statusEl.textContent = "No records found for this VM.";
+    statusEl.style.color = "red";
+    document.getElementById("vmReportSection").style.display = "none";
+    return;
+  }
+
+  statusEl.textContent = "";
+
+  const anomalyColor = data.anomaly_status === "Abnormal" ? "red" : "green";
+
+  document.getElementById("vmSummaryGrid").innerHTML = `
+    <div class="summary-card"><div class="value">${data.total_records}</div><div class="label">Total Records</div></div>
+    <div class="summary-card"><div class="value">${data.latest_status ?? "-"}</div><div class="label">Latest Status</div></div>
+    <div class="summary-card"><div class="value" style="color:${anomalyColor}">${data.anomaly_status}</div><div class="label">ML Anomaly Check</div></div>
+  `;
+
+  if (vmChart) vmChart.destroy();
+
+  vmChart = new Chart(document.getElementById("vmWeeklyChart"), {
+    type: "bar",
+    data: {
+      labels: data.week_labels,
+      datasets: [{
+        label: "Total Files",
+        data: data.week_values,
+        backgroundColor: "#042c53"
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+
+  document.getElementById("vmReportSection").style.display = "block";
+  document.getElementById("vmReportSection").scrollIntoView({ behavior: "smooth" });
+});
+
+    async function loadSummary() {
+      const response = await fetch(`${API_BASE_URL}/dashboard/summary`, { headers: authHeaders });
+      const data = await response.json();
+
+      const summaryGrid = document.getElementById("summaryGrid");
+
+      const cards = [
+        { label: "Total VMs", value: data.total_vms },
+        { label: "Total Clients", value: data.total_clients },
+        { label: "Total Servers", value: data.total_servers },
+        { label: "Updated Today", value: data.updated_today },
+        { label: "Not Updated Today", value: data.not_updated_today },
+        { label: "Failed Backups", value: data.failed_count },
+        { label: "Running Backups", value: data.running_count },
+      ];
+
+      summaryGrid.innerHTML = cards.map(card => `
+        <div class="summary-card">
+          <div class="value">${card.value}</div>
+          <div class="label">${card.label}</div>
+        </div>
+      `).join("");
+    }
+
+    const chartInstances = {};
+
+async function loadMetricChart(canvasId, backupType, metric) {
+  const response = await fetch(
+    `${API_BASE_URL}/dashboard/pie/metric?backup_type=${encodeURIComponent(backupType)}&metric=${encodeURIComponent(metric)}`,
+    { headers: authHeaders }
+  );
+  const data = await response.json();
+
+  // If a chart already exists on this canvas, destroy it first before redrawing
+  if (chartInstances[canvasId]) {
+    chartInstances[canvasId].destroy();
+  }
+
+  chartInstances[canvasId] = new Chart(document.getElementById(canvasId), {
+    type: "pie",
+    data: {
+      labels: data.labels,
+      datasets: [{
+        data: data.values,
+        backgroundColor: ["#2e7d32", "#c62828", "#f0a500"]
+      }]
+    },
+    options: { responsive: true, maintainAspectRatio: false }
+  });
+}
+
+document.querySelectorAll(".metricSelect").forEach((select) => {
+  const canvasId = select.dataset.target;
+  const backupType = select.dataset.type;
+
+  select.addEventListener("change", () => {
+    loadMetricChart(canvasId, backupType, select.value);
+  });
+});
+async function loadAllVmsReport() {
+  const response = await fetch(`${API_BASE_URL}/dashboard/vm-report-all`, { headers: authHeaders });
+  const data = await response.json();
+
+  const tbody = document.getElementById("allVmsBody");
+
+  tbody.innerHTML = data.map(vm => {
+    const color = vm.anomaly_status === "Abnormal" ? "red" : (vm.anomaly_status === "Normal" ? "green" : "#666");
+    return `
+      <tr style="border-bottom: 1px solid #eee;">
+        <td style="padding: 8px;">${vm.client_name}</td>
+        <td style="padding: 8px;">${vm.total_records}</td>
+        <td style="padding: 8px;">${vm.latest_status ?? "-"}</td>
+        <td style="padding: 8px; color: ${color}; font-weight: 600;">${vm.anomaly_status}</td>
+      </tr>
+    `;
+  }).join("");
+}
+
+    async function loadReplicationUpdatedChart() {
+      const response = await fetch(
+        `${API_BASE_URL}/dashboard/pie/updated-today?backup_type=Replication`,
+        { headers: authHeaders }
+      );
+      const data = await response.json();
+
+      new Chart(document.getElementById("replUpdatedChart"), {
+        type: "pie",
+        data: {
+          labels: data.labels,
+          datasets: [{
+            data: data.values,
+            backgroundColor: ["#042c53", "#f0a500"]
+          }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+      });
+    }
+
+   loadSummary();
+loadMetricChart("ddChart", "Disk-to-Disk", "status");
+loadMetricChart("dtChart", "Disk-to-Tape", "status");
+loadReplicationUpdatedChart();
+loadAllVmsReport();
+  </script>
+</body>
+</html>
